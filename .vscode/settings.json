@@ -1,0 +1,8 @@
+{
+    "Lua.workspace.library": [
+        "c:\\Users\\seanm\\.vscode\\extensions\\carrot-industries.ma3-lua-api-1.3.4\\resources\\2.2"
+    ],
+    "Lua.diagnostics.disable": [
+        "undefined-field"
+    ]
+}
