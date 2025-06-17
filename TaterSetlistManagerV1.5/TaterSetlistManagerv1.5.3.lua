@@ -1,7 +1,9 @@
 -- grandMA3 Plugin: Tater Setlist Manager (Auto-Cue Version)
--- Author: Tater
+-- Author: LXTater.com
 -- Plugin Version: 1.5.3
 -- Manual input disabled, warning dialog added, Go+ Macro match enforced
+-- Warning, not a finished product!! Use at ur own risk <3 
+-- Thank you FromDarkToLight
 
 return function()
 
