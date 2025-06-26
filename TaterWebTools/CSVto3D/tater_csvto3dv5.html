@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tater MA3 Fixture Position Converter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #20262e;
+      color: #f7fafc;
+      margin: 0; 
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #292f3c;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px #0004;
+      padding: 2rem 2.5rem 2rem 2.5rem;
+      margin: 3rem 0;
+      width: 100%; 
+      max-width: 530px;
+    }
+    h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 0.2em; }
+    .desc { color: #c5cee4; margin-bottom: 2em; }
+    label { font-size: 1rem; }
+    input[type=file] {
+      margin: 0.5em 0 1.2em 0;
+      color: #fff;
+    }
+    select, button {
+      background: #31374a;
+      color: #f7fafc;
+      border: 1px solid #535e7b;
+      border-radius: 6px;
+      font-size: 1rem;
+      padding: 0.5em 0.8em;
+      margin-bottom: 1.1em;
+    }
+    button {
+      cursor: pointer;
+      transition: background 0.15s;
+      font-weight: bold;
+      margin-bottom: 0;
+    }
+    button:hover {
+      background: #47507c;
+    }
+    .result { margin-top: 1.5em; }
+    .success { color: #a5ffa5; }
+    .error { color: #ffb3b3; }
+    .warn { color: #ffe47a; }
+    .footer { color: #7d8496; font-size: 0.92em; margin-top: 3em; text-align: center; }
+    .download-link {
+      display: inline-block; margin-top: 0.9em;
+      background: #2dbe73; color: #fff; padding: 0.55em 1.3em;
+      border-radius: 6px; font-weight: bold; text-decoration: none;
+      transition: background 0.15s;
+    }
+    .download-link:hover { background: #22a06c; }
+    .console {
+      background: #181b22;
+      color: #d0e3fc;
+      border-radius: 7px;
+      min-height: 80px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-family: 'Fira Mono', 'Menlo', monospace;
+      font-size: 0.97em;
+      padding: 0.7em 1em 0.7em 1em;
+      margin-top: 1.4em;
+      margin-bottom: 1.1em;
+      border: 1px solid #29304a;
+    }
+    .console .error { color: #ffb3b3; }
+    .console .warn { color: #ffe47a; }
+    .console .info { color: #b3deff; }
+    .console .success { color: #a5ffa5; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Tater MA3 CSV to 3D</h1>
+  <div class="desc">Upload your CSV file with fixture positions/rotations. Select the source units and the units you want in your output Lua plugin for GrandMA3.<br>
+    <small style="color:#85d7ff;">Supports columns named Channel, FixtureID, ChannelID, Fixture. Also detects "Position X", etc. Other columns like beam, power, etc. are ignored.</small>
+  </div>
+  <form id="converter-form">
+    <label>1. Upload CSV File:</label><br>
+    <input type="file" id="csvFile" accept=".csv" required><br>
+
+    <label>2. CSV Units:</label><br>
+    <select id="csvUnits">
+      <option value="meters">Meters (e.g. 3.2)</option>
+      <option value="feet">Feet (e.g. 10.5')</option>
+    </select><br>
+
+    <label>3. MA3 Units:</label><br>
+    <select id="ma3Units">
+      <option value="meters">Meters (recommended for MA3)</option>
+      <option value="feet">Feet</option>
+    </select><br>
+
+    <button type="submit">Generate Plugin</button>
+  </form>
+  <div class="console" id="console"></div>
+  <div class="result" id="result"></div>
+
+  <div class="footer">
+    Built by <b>LXTater</b> · All processing is done in your browser. No files are uploaded to any server. Uses Papaparse for csv parsing.
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+function feetToMeters(feet) {
+  return Math.round(parseFloat(feet) * 0.3048 * 1000) / 1000;
+}
+function metersToFeet(m) {
+  return Math.round(parseFloat(m) / 0.3048 * 1000) / 1000;
+}
+function cleanRotation(val) {
+  if (!val) return 0;
+  let v = val.replace('°','').replace('−','-').replace('–','-').replace("'", "");
+  v = parseFloat(v);
+  if (isNaN(v)) return 0;
+  return Math.round(v);
+}
+function parsePosition(pos, fromUnits, toUnits) {
+  let val = parseFloat((pos + '').replace(/[^0-9.\-]+/g, ''));
+  if (isNaN(val)) return 0.0;
+  if (fromUnits === toUnits) return Math.round(val * 1000) / 1000;
+  if (fromUnits === 'feet' && toUnits === 'meters') return feetToMeters(val);
+  if (fromUnits === 'meters' && toUnits === 'feet') return metersToFeet(val);
+  return Math.round(val * 1000) / 1000;
+}
+function logConsole(msg, type) {
+  let el = document.getElementById('console');
+  let d = document.createElement('div');
+  d.className = type;
+  d.innerHTML = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+function clearConsole() {
+  document.getElementById('console').innerHTML = '';
+}
+
+function showLuaInBox(luaCode) {
+  const result = document.getElementById('result');
+  result.innerHTML = `
+    <div class='success'>Success! <br>Copy or download your Lua code below:</div>
+    <textarea id="luaCodeBox" readonly style="width:100%;min-height:290px;font-family:monospace;font-size:1em;background:#191d26;color:#7bfca7;border-radius:7px;border:1px solid #2e3544;margin-top:0.9em;padding:1em;">${luaCode.replace(/</g,"&lt;")}</textarea>
+    <div style="margin-top:0.7em;">
+      <button id="copyLuaBtn" style="background:#3486ee;">Copy All</button>
+      <button id="downloadLuaBtn" style="background:#3ec47b;">Download as .txt</button>
+    </div>
+  `;
+
+  // Copy All
+  document.getElementById('copyLuaBtn').onclick = function() {
+    const codeBox = document.getElementById('luaCodeBox');
+    codeBox.select();
+    codeBox.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    logConsole("Lua code copied to clipboard.", "success");
+  };
+
+  // Download as .txt
+  document.getElementById('downloadLuaBtn').onclick = function() {
+    const lua = document.getElementById('luaCodeBox').value;
+    const blob = new Blob([lua], {type: 'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Set3D_Fixtures.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    logConsole("Lua code downloaded as .txt.", "success");
+  };
+}
+
+document.getElementById('converter-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const csvFile = document.getElementById('csvFile').files[0];
+  const csvUnits = document.getElementById('csvUnits').value;
+  const ma3Units = document.getElementById('ma3Units').value;
+  clearConsole();
+  document.getElementById('result').innerHTML = '';
+  if (!csvFile) {
+    logConsole('Please select a CSV file.', 'error');
+    return;
+  }
+  logConsole('Reading CSV file...', 'info');
+  Papa.parse(csvFile, {
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const data = results.data;
+      function findCol(keys, candidates) {
+        for (let cand of candidates) {
+          for (let k of keys) {
+            let norm = k.trim().toLowerCase().replace(/\s+/g, '');
+            let orig = k.trim().toLowerCase();
+            if (norm === cand || orig === cand || norm.includes(cand)) return k;
+          }
+        }
+        return null;
+      }
+      if (data.length === 0) {
+        logConsole('No data found in file!', 'error');
+        return;
+      }
+      const keys = Object.keys(data[0]);
+      const idCol = findCol(keys, ['channel','fixtureid','channelid','fixture']);
+      const xCol = findCol(keys, ['positionx','posx','x']) || findCol(keys, ['position x']);
+      const yCol = findCol(keys, ['positiony','posy','y']) || findCol(keys, ['position y']);
+      const zCol = findCol(keys, ['positionz','posz','z']) || findCol(keys, ['position z']);
+      const rotxCol = findCol(keys, ['rotationx','rotx','rx']) || findCol(keys, ['rotation x']);
+      const rotyCol = findCol(keys, ['rotationy','roty','ry']) || findCol(keys, ['rotation y']);
+      const rotzCol = findCol(keys, ['rotationz','rotz','rz']) || findCol(keys, ['rotation z']);
+      logConsole('Detected columns: ' +
+        (idCol ? `<b>ID: ${idCol}</b>` : '<span class="error">No ID column!</span>') +
+        (xCol ? `, X: ${xCol}` : ', <span class="warn">X missing!</span>') +
+        (yCol ? `, Y: ${yCol}` : ', <span class="warn">Y missing!</span>') +
+        (zCol ? `, Z: ${zCol}` : ', <span class="warn">Z missing!</span>') +
+        (rotxCol ? `, RotX: ${rotxCol}` : ', <span class="warn">RotX missing!</span>') +
+        (rotyCol ? `, RotY: ${rotyCol}` : ', <span class="warn">RotY missing!</span>') +
+        (rotzCol ? `, RotZ: ${rotzCol}` : ', <span class="warn">RotZ missing!</span>')
+      , 'info');
+      if (!idCol || !xCol || !yCol || !zCol || !rotxCol || !rotyCol || !rotzCol) {
+        logConsole('Could not auto-detect one or more required columns. Please check your file.', 'error');
+        return;
+      }
+      let lua = [];
+      lua.push('return function()');
+      lua.push('  local function Set3D(fid, px, py, pz, rx, ry, rz)');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "PosX" "%.3f"\', fid, px))');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "PosY" "%.3f"\', fid, py))');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "PosZ" "%.3f"\', fid, pz))');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "RotX" "%d"\', fid, rx))');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "RotY" "%d"\', fid, ry))');
+      lua.push('    Cmd(string.format(\'Set Fixture %d Property "RotZ" "%d"\', fid, rz))');
+      lua.push('  end');
+      let numRows = 0;
+      let numSkipped = 0;
+      data.forEach((row, idx) => {
+        let fid = parseInt(row[idCol]);
+        let px = parsePosition(row[xCol], csvUnits, ma3Units);
+        let py = parsePosition(row[yCol], csvUnits, ma3Units);
+        let pz = parsePosition(row[zCol], csvUnits, ma3Units);
+        let rx = cleanRotation(row[rotxCol]);
+        let ry = cleanRotation(row[rotyCol]);
+        let rz = cleanRotation(row[rotzCol]);
+        let rowOk = true;
+        if (isNaN(fid)) {
+          logConsole(`Row ${idx + 2}: Invalid or missing ID, row skipped.`, 'warn');
+          numSkipped++;
+          rowOk = false;
+        }
+        if ([px, py, pz].some(v => typeof v !== 'number' || isNaN(v))) {
+          logConsole(`Row ${idx + 2}: Invalid position value(s), row skipped.`, 'warn');
+          numSkipped++;
+          rowOk = false;
+        }
+        if (rowOk) {
+          lua.push(`  Set3D(${fid}, ${px.toFixed(3)}, ${py.toFixed(3)}, ${pz.toFixed(3)}, ${rx}, ${ry}, ${rz})`);
+          numRows++;
+        }
+      });
+      if (numRows === 0) {
+        logConsole('No valid fixture rows found. Please check your file.', 'error');
+        return;
+      }
+      if (numSkipped > 0) {
+        logConsole(`Skipped ${numSkipped} invalid row(s).`, 'warn');
+      }
+      logConsole(`Successfully parsed ${numRows} fixture(s).`, 'success');
+      lua.push('');
+      lua.push('  Printf(\'All fixture 3D positions and rotations set.\')');
+      lua.push('end');
+      showLuaInBox(lua.join('\n'));
+    },
+    error: function() {
+      logConsole('Failed to read the CSV file.', 'error');
+    }
+  });
+});
+</script>
+
+
+</body>
+</html>
