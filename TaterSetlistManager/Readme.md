@@ -8,3 +8,6 @@ The plugin will not update the lastcue until you press update, it will update th
 Please send any bugs to Tater@LXTater.com
 Updated 4/6/2025
 MA3 V 2.2.5.0
+
+
+www.lxtater.com
