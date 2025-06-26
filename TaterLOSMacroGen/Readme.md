@@ -12,3 +12,6 @@ README!
 -- Comments are terrible rn sorry
 
 Going to try and make this into something that can be pulled up on any console, but as of right now this is stricly tied to a personal showfile.
+
+
+www.lxtater.com
