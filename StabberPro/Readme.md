@@ -1,4 +1,4 @@
-THIS IS AN ENTIRE WORK IN PROGRESS- I HIGHLY DO NOT DOWNLOADING OR USING THIS ON YOUR CONSOLE.
+THIS IS AN ENTIRE WORK IN PROGRESS- I HIGHLY DO NOT RECCOMEND DOWNLOADING OR USING THIS ON YOUR CONSOLE.
         -- StabberPro
         -- - Assumes a single exact group match; uses the first if multiple.
         -- - Preset detection uses the first selected subfixture's Programmer phasers.
