@@ -1,0 +1,15 @@
+THIS IS AN ENTIRE WORK IN PROGRESS- I HIGHLY DO NOT DOWNLOADING OR USING THIS ON YOUR CONSOLE.
+        -- StabberPro
+        -- - Assumes a single exact group match; uses the first if multiple.
+        -- - Preset detection uses the first selected subfixture's Programmer phasers.
+        -- - Z dimension not handled.
+        -- - Temporary sequence is created but not deleted; user can manage it.
+        -- 0.1.3 : Cleaning up redundent, debug, and unused bugfix code
+        -- Absolutely no UI in this version. In order to make this work, make (1) group selection, one or more preset selections, and then run the plugin.
+        -- do not use this if u don't what ur doing lol, this is such an early version it will most likely break things if u aren't careful.
+        -- Author: LXTater
+        -- Website: www.lxtater.com
+        -- Github: https://github.com/LXTater
+        -- Version: 0.1.3
+        -- MA3 Version: 2.2.5.2 with compatibility for 2.3+
+        -- Date: September 11, 2025
